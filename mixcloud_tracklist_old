@@ -27,6 +27,9 @@ Function Main
 	if row <> "" and row <> "Buy" then
 	    if title = "" then
 	    	title = trim(row)
+		title = Replace( title, "?[?", "[" )
+		title = Replace( title, "?]?", "]" )
+
 		if instr(title, "Unknown") > 0 and instr(title, vbTab) then
 		    string_array = split(title, vbTab)
 		    title = "Unknown"
