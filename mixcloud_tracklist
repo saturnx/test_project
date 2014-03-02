@@ -1,0 +1,91 @@
+Option Explicit
+
+Const ForReading = 1, ForWriting = 2, ForAppending = 8
+
+Public count, artist, title, tracklist, n
+
+Function Main
+    Dim fso, f, filename, oExec
+    Dim title_regexp, artist_regexp, allMatches
+
+    Set oExec=CreateObject("WScript.Shell").Exec( "mshta.exe ""about:" & "<" & "input type=file id=FILE>" & "<" & "script>FILE.click();new ActiveXObject('Scripting.FileSystemObject').GetStandardStream(1).WriteLine(FILE.value);close();resizeTo(0,0);" & "<" & "/script>""" )
+    filename = oExec.StdOut.ReadAll
+    filename = Replace( filename, vbCRLF, "" )
+
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set f = fso.OpenTextFile(filename, ForReading)
+
+    Set title_regexp = New RegExp
+    With title_regexp
+	.Pattern    = "^(\d+)\."
+	.IgnoreCase = False
+	.Global     = False
+    End With
+
+    Set artist_regexp = New RegExp
+    With artist_regexp
+	.Pattern    = "^by"
+	.IgnoreCase = False
+	.Global     = False
+    End With
+
+    dim row, string_array
+    count = ""
+    artist = ""
+    title = ""
+    tracklist = ""
+    n = 0
+
+    Do Until f.AtEndOfStream
+	row = Replace( trim(f.ReadLine), vbCRLF, "" )
+
+	if row <> "" and row <> "Buy" then
+	    if title = "" then
+	    	title = trim(row)
+		title = Replace( title, "?[?", "[" )
+		title = Replace( title, "?]?", "]" )
+		
+		If title_regexp.Test(title) Then
+		    Set allMatches = title_regexp.Execute(title)
+		    count = allMatches.Item(0).submatches.Item(0)
+		    title = title_regexp.replace(title, "")
+
+		    if title = "Unknown" then
+			artist = "Unknown"
+			Call build_tracklist
+		    end if
+		end if
+	    else
+		artist = trim(row)
+	    	artist = artist_regexp.replace(artist, "")
+
+		Call build_tracklist
+	    end if
+	end if
+    Loop
+
+    f.Close
+    Set f = fso.OpenTextFile(filename, ForWriting)
+    f.Write tracklist
+
+    f.Close
+End Function
+
+
+Function build_tracklist
+
+    if len(count) = 1 then
+	count = "0" & count
+    end if
+
+    tracklist = tracklist & count & ". " & artist & " - " & title & vbCRLF
+
+    count = ""
+    artist = ""
+    title = ""
+
+    n = n + 1
+End Function
+
+
+Main
